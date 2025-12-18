@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "evoloop"
+version = "0.1.0"
+description = "A framework-agnostic library for evaluating and improving AI agents"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "EvoLoop Team" }
+]
+keywords = [
+    "ai",
+    "agents",
+    "evaluation",
+    "llm",
+    "self-evolving",
+    "langchain",
+    "langgraph",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core dependencies - intentionally minimal
+dependencies = []
+
+[project.optional-dependencies]
+# For LLM-as-Judge evaluation (Phase 2)
+llm = [
+    "litellm>=1.0.0",
+]
+# For pretty terminal output
+rich = [
+    "rich>=13.0.0",
+]
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+# All optional dependencies
+all = [
+    "evoloop[llm,rich,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/evoloop/evoloop"
+Documentation = "https://github.com/evoloop/evoloop#readme"
+Repository = "https://github.com/evoloop/evoloop"
+
+[project.scripts]
+evoloop = "evoloop.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/evoloop"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
