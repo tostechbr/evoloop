@@ -88,7 +88,5 @@ Thumbs.db
 evoloop.db
 *.db
 
-# Documentation source files (HTML references, not part of the package)
-docs/*.html
-docs/Self-Evolving.md
-docs/LLM-as-a-JudgePracticalguide.md
+# Documentation folder (not uploaded to GitHub)
+docs/

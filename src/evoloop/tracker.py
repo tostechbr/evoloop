@@ -387,7 +387,11 @@ class _AgentWrapper:
             for chunk in chunks:
                 for key, value in chunk.items():
                     if key not in merged:
-                        merged[key] = value
+                        # Copy the value if it's a list to avoid modifying the original chunk
+                        if isinstance(value, list):
+                            merged[key] = list(value)
+                        else:
+                            merged[key] = value
                     elif isinstance(value, list) and isinstance(merged[key], list):
                         merged[key].extend(value)
                     else:

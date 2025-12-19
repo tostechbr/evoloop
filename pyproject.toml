@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "evoloop"
-version = "0.1.0"
+version = "0.1.1"
 description = "A framework-agnostic library for evaluating and improving AI agents"
 readme = "README.md"
 license = "MIT"
@@ -57,9 +57,9 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/evoloop/evoloop"
-Documentation = "https://github.com/evoloop/evoloop#readme"
-Repository = "https://github.com/evoloop/evoloop"
+Homepage = "https://github.com/tostechbr/evoloop"
+Documentation = "https://github.com/tostechbr/evoloop#readme"
+Repository = "https://github.com/tostechbr/evoloop"
 
 [project.scripts]
 evoloop = "evoloop.cli:main"
