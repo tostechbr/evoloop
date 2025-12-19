@@ -3,11 +3,17 @@ EvoLoop - Self-Evolving Agent Framework
 
 A framework-agnostic library for evaluating and improving AI agents.
 
-Stage 1 Features:
+Phase 1 Features (Tracker):
 - @monitor: Decorator to capture traces from any function (sync or async)
 - wrap(): Wrapper for LangGraph/LangChain agents
 - log(): Manual trace logging for maximum control
 - SQLite storage with zero configuration
+
+Phase 1.5 Features (Viewer & Annotations):
+- Annotation types: Pass/Fail judgments with critiques
+- Export: CSV/JSON export for analysis
+- UI: Visual trace viewer and annotator (pip install evoloop[ui])
+- CLI: evoloop ui, evoloop stats, evoloop export
 
 The library is designed to be non-intrusive:
 - Supports both sync and async functions
@@ -19,7 +25,18 @@ from evoloop.types import Trace, TraceContext
 from evoloop.storage import SQLiteStorage
 from evoloop.tracker import monitor, wrap, log, get_storage, set_storage, set_context
 
-__version__ = "0.2.1"
+# Annotations (Phase 1.5)
+from evoloop.annotations import Annotation, AnnotationStorage, Judgment
+
+# Export (Phase 1.5)
+from evoloop.export import (
+    export_traces_to_csv,
+    export_traces_to_json,
+    export_annotations_to_csv,
+    export_annotations_to_json,
+)
+
+__version__ = "0.3.0"
 
 __all__ = [
     # Core decorators/functions
@@ -35,4 +52,13 @@ __all__ = [
     "TraceContext",
     # Context
     "set_context",
+    # Annotations (Phase 1.5)
+    "Annotation",
+    "AnnotationStorage",
+    "Judgment",
+    # Export (Phase 1.5)
+    "export_traces_to_csv",
+    "export_traces_to_json",
+    "export_annotations_to_csv",
+    "export_annotations_to_json",
 ]

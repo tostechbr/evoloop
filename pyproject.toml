@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "evoloop"
-version = "0.2.1"
+version = "0.3.0"
 description = "A framework-agnostic library for evaluating and improving AI agents"
 readme = "README.md"
 license = "MIT"
@@ -36,6 +36,11 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+# Visual UI for trace review and annotation
+ui = [
+    "streamlit>=1.28.0",
+    "pandas>=2.0.0",
+]
 # For LLM-as-Judge evaluation (Phase 2)
 llm = [
     "litellm>=1.0.0",
@@ -53,7 +58,7 @@ dev = [
 ]
 # All optional dependencies
 all = [
-    "evoloop[llm,rich,dev]",
+    "evoloop[ui,llm,rich,dev]",
 ]
 
 [project.urls]

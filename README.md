@@ -13,11 +13,19 @@ Unlike other frameworks that focus on *building* agents (like LangChain, CrewAI,
 - **Fail-Safe**: Tracing errors are logged but never crash your application
 - **Lightweight**: No heavy dependencies, SQLite storage by default
 - **Multiple Integration Modes**: Decorator, wrapper, or manual logging
+- **Visual UI**: Streamlit-based trace viewer for domain experts (`evoloop ui`)
+- **Annotations**: Pass/Fail judgments with detailed critiques
+- **Export**: CSV/JSON export for analysis in notebooks or spreadsheets
 
 ## 📦 Installation
 
 ```bash
 pip install evoloop
+```
+
+With UI (for visual trace viewer):
+```bash
+pip install evoloop[ui]
 ```
 
 Or install from source:
@@ -88,6 +96,8 @@ trace = log(
 
 ## 📊 Viewing Traces
 
+### Via Code
+
 ```python
 from evoloop import get_storage
 
@@ -101,6 +111,69 @@ for trace in traces:
 # Count by status
 print(f"Total: {storage.count()}")
 print(f"Errors: {storage.count(status='error')}")
+```
+
+### Visual UI (Recommended)
+
+Launch the Streamlit-based trace viewer:
+
+```bash
+evoloop ui
+```
+
+This opens a browser with:
+- **📋 Traces**: Browse and filter all captured traces
+- **✏️ Annotate**: Review traces with Pass/Fail judgments + critiques
+- **📊 Stats**: View annotation progress and error taxonomy
+
+The UI is designed for domain experts who don't need to write code.
+
+## 📝 Annotations
+
+Annotate traces programmatically or via the UI:
+
+```python
+from evoloop.annotations import AnnotationStorage, Annotation, Judgment
+
+storage = AnnotationStorage()
+
+# Add annotation
+annotation = Annotation(
+    trace_id="trace-123",
+    judgment=Judgment.FAIL,
+    critique="Response didn't address the user's main question",
+    annotator="domain_expert@company.com",
+    tags=["off-topic", "incomplete"]
+)
+storage.save(annotation)
+
+# Get stats
+stats = storage.get_stats()
+print(f"Pass rate: {stats.pass_count / stats.total_count:.1%}")
+```
+
+## 📤 Export
+
+Export traces and annotations for analysis:
+
+```bash
+# Export to CSV
+evoloop export --format csv --output traces.csv
+
+# Export to JSON
+evoloop export --format json --output traces.json
+
+# Export annotations only
+evoloop export --format csv --output annotations.csv --annotations-only
+```
+
+Or via code:
+
+```python
+from evoloop.export import export_traces_to_csv, export_annotations_to_json
+
+export_traces_to_csv("traces.csv")
+export_annotations_to_json("annotations.json")
 ```
 
 ## 🎯 Adding Context (Business Rules)
@@ -126,10 +199,14 @@ def debt_agent(user_message: str, customer_data: dict) -> str:
 
 ## 🛣️ Roadmap
 
-- [x] **Phase 1**: Tracker Module (capture traces) ✅ *v0.2.0 - Production Ready*
+- [x] **Phase 1**: Tracker Module (capture traces) 
   - Sync and async function support
   - Robust serialization (Pydantic, dataclasses, LangChain)
   - Fail-safe storage (errors logged, never raised)
+- [x] **Phase 1.5**: Visual Trace Viewer
+  - Streamlit UI for domain experts
+  - Pass/Fail annotations with critiques
+  - CSV/JSON export for analysis
 - [ ] **Phase 2**: Judge Module (binary evaluation)
 - [ ] **Phase 3**: Reporter Module (error taxonomy)
 - [ ] **Phase 4**: CLI (`evoloop eval`, `evoloop report`)
