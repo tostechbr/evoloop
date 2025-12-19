@@ -19,7 +19,7 @@ from evoloop.types import Trace, TraceContext
 from evoloop.storage import SQLiteStorage
 from evoloop.tracker import monitor, wrap, log, get_storage, set_storage, set_context
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     # Core decorators/functions

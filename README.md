@@ -8,6 +8,9 @@ Unlike other frameworks that focus on *building* agents (like LangChain, CrewAI,
 
 - **Framework Agnostic**: Works with LangChain, LangGraph, AutoGen, raw OpenAI API, or any other stack
 - **Zero Configuration**: Just add a decorator and start capturing traces
+- **Async Support**: Works seamlessly with both sync and async functions
+- **Robust Serialization**: Handles Pydantic models, dataclasses, LangChain messages automatically
+- **Fail-Safe**: Tracing errors are logged but never crash your application
 - **Lightweight**: No heavy dependencies, SQLite storage by default
 - **Multiple Integration Modes**: Decorator, wrapper, or manual logging
 
@@ -20,7 +23,7 @@ pip install evoloop
 Or install from source:
 
 ```bash
-git clone https://github.com/yourusername/evoloop.git
+git clone https://github.com/tostechbr/evoloop.git
 cd evoloop
 pip install -e .
 ```
@@ -39,6 +42,22 @@ def my_agent(question: str) -> str:
 
 # Use as normal - traces are captured automatically
 response = my_agent("What is the capital of France?")
+```
+
+### Option 1b: Async Functions (Also Works!)
+
+```python
+from evoloop import monitor
+import asyncio
+
+@monitor(name="async_agent")
+async def my_async_agent(question: str) -> str:
+    # Your async agent logic
+    await asyncio.sleep(0.1)
+    return "Async response"
+
+# Works seamlessly with async
+response = await my_async_agent("What is 2+2?")
 ```
 
 ### Option 2: Wrapper (For LangGraph/LangChain)
@@ -107,7 +126,10 @@ def debt_agent(user_message: str, customer_data: dict) -> str:
 
 ## 🛣️ Roadmap
 
-- [x] **Phase 1**: Tracker Module (capture traces)
+- [x] **Phase 1**: Tracker Module (capture traces) ✅ *v0.2.0 - Production Ready*
+  - Sync and async function support
+  - Robust serialization (Pydantic, dataclasses, LangChain)
+  - Fail-safe storage (errors logged, never raised)
 - [ ] **Phase 2**: Judge Module (binary evaluation)
 - [ ] **Phase 3**: Reporter Module (error taxonomy)
 - [ ] **Phase 4**: CLI (`evoloop eval`, `evoloop report`)
