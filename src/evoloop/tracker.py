@@ -11,7 +11,9 @@ All methods are designed to be non-intrusive and framework-agnostic.
 
 from __future__ import annotations
 
+import asyncio
 import functools
+import inspect
 import time
 from contextvars import ContextVar
 from typing import Any, Callable, Optional, TypeVar, Union
@@ -94,6 +96,8 @@ def monitor(
     This is the primary way to add EvoLoop monitoring to any agent function.
     It captures input arguments, output results, execution time, and any errors.
     
+    Supports both synchronous and asynchronous functions automatically.
+    
     Args:
         func: The function to monitor (when used without parentheses).
         name: Optional name for the trace (defaults to function name).
@@ -113,66 +117,137 @@ def monitor(
         >>> @monitor(name="chat_agent", metadata={"version": "1.0"})
         >>> def my_agent(user_message: str) -> str:
         ...     return "Hello, " + user_message
+        >>>
+        >>> # Works with async functions too!
+        >>> @monitor(name="async_agent")
+        >>> async def my_async_agent(query: str) -> str:
+        ...     await asyncio.sleep(0.1)
+        ...     return "Async response"
     """
     def decorator(fn: F) -> F:
-        @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            storage = get_storage()
-            start_time = time.perf_counter()
-            
-            # Capture input
-            input_data = _capture_input(args, kwargs)
-            
-            # Get any context set by the user
-            context = get_context()
-            
-            # Prepare metadata
-            trace_metadata = metadata.copy() if metadata else {}
-            trace_metadata["function_name"] = name or fn.__name__
-            
-            try:
-                # Execute the function
-                result = fn(*args, **kwargs)
-                
-                # Calculate duration
-                duration_ms = (time.perf_counter() - start_time) * 1000
-                
-                # Create and save trace
-                trace = Trace(
-                    input=input_data,
-                    output=result,
-                    context=context,
-                    duration_ms=duration_ms,
-                    status="success",
-                    metadata=trace_metadata,
-                )
-                storage.save(trace)
-                
-                return result
-                
-            except Exception as e:
-                # Calculate duration even on error
-                duration_ms = (time.perf_counter() - start_time) * 1000
-                
-                # Create and save error trace
-                trace = Trace(
-                    input=input_data,
-                    output=None,
-                    context=context,
-                    duration_ms=duration_ms,
-                    status="error",
-                    error=str(e),
-                    metadata=trace_metadata,
-                )
-                storage.save(trace)
-                
-                # Re-raise the exception
-                raise
-            finally:
-                # Clear context after each call
-                clear_context()
+        trace_name = name or fn.__name__
         
-        return wrapper  # type: ignore
+        # Check if function is async
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                storage = get_storage()
+                start_time = time.perf_counter()
+                
+                # Capture input
+                input_data = _capture_input(args, kwargs)
+                
+                # Get any context set by the user
+                context = get_context()
+                
+                # Prepare metadata
+                trace_metadata = metadata.copy() if metadata else {}
+                trace_metadata["function_name"] = trace_name
+                trace_metadata["is_async"] = True
+                
+                try:
+                    # Execute the async function
+                    result = await fn(*args, **kwargs)
+                    
+                    # Calculate duration
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    
+                    # Create and save trace
+                    trace = Trace(
+                        input=input_data,
+                        output=result,
+                        context=context,
+                        duration_ms=duration_ms,
+                        status="success",
+                        metadata=trace_metadata,
+                    )
+                    storage.save(trace)
+                    
+                    return result
+                    
+                except Exception as e:
+                    # Calculate duration even on error
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    
+                    # Create and save error trace
+                    trace = Trace(
+                        input=input_data,
+                        output=None,
+                        context=context,
+                        duration_ms=duration_ms,
+                        status="error",
+                        error=str(e),
+                        metadata=trace_metadata,
+                    )
+                    storage.save(trace)
+                    
+                    # Re-raise the exception
+                    raise
+                finally:
+                    # Clear context after each call
+                    clear_context()
+            
+            return async_wrapper  # type: ignore
+        else:
+            @functools.wraps(fn)
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+                storage = get_storage()
+                start_time = time.perf_counter()
+                
+                # Capture input
+                input_data = _capture_input(args, kwargs)
+                
+                # Get any context set by the user
+                context = get_context()
+                
+                # Prepare metadata
+                trace_metadata = metadata.copy() if metadata else {}
+                trace_metadata["function_name"] = trace_name
+                trace_metadata["is_async"] = False
+                
+                try:
+                    # Execute the function
+                    result = fn(*args, **kwargs)
+                    
+                    # Calculate duration
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    
+                    # Create and save trace
+                    trace = Trace(
+                        input=input_data,
+                        output=result,
+                        context=context,
+                        duration_ms=duration_ms,
+                        status="success",
+                        metadata=trace_metadata,
+                    )
+                    storage.save(trace)
+                    
+                    return result
+                    
+                except Exception as e:
+                    # Calculate duration even on error
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    
+                    # Create and save error trace
+                    trace = Trace(
+                        input=input_data,
+                        output=None,
+                        context=context,
+                        duration_ms=duration_ms,
+                        status="error",
+                        error=str(e),
+                        metadata=trace_metadata,
+                    )
+                    storage.save(trace)
+                    
+                    # Re-raise the exception
+                    raise
+                finally:
+                    # Clear context after each call
+                    clear_context()
+            
+            return sync_wrapper  # type: ignore
     
     # Handle both @monitor and @monitor() syntax
     if func is not None:

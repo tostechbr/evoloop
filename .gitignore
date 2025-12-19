@@ -88,5 +88,6 @@ Thumbs.db
 evoloop.db
 *.db
 
-# Documentation folder (not uploaded to GitHub)
+# Documentation folder (local only, not uploaded to GitHub)
 docs/
+

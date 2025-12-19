@@ -3,16 +3,25 @@ Storage backends for EvoLoop traces.
 
 This module provides storage implementations for persisting traces.
 The default implementation uses SQLite for zero-configuration local storage.
+
+IMPORTANT: All storage operations are fail-safe. Errors are logged but never
+raised, ensuring that tracing never crashes the user's application.
 """
 
 import json
 import sqlite3
+import sys
 import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
 from evoloop.types import Trace
+
+
+def _log_error(message: str) -> None:
+    """Log an error to stderr without raising."""
+    print(f"[EvoLoop Warning] {message}", file=sys.stderr)
 
 
 class BaseStorage(ABC):
@@ -80,74 +89,90 @@ class SQLiteStorage(BaseStorage):
 
     def _init_db(self) -> None:
         """Initialize the database schema."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS traces (
-                id TEXT PRIMARY KEY,
-                input TEXT NOT NULL,
-                output TEXT NOT NULL,
-                context TEXT,
-                timestamp TEXT NOT NULL,
-                duration_ms REAL,
-                status TEXT NOT NULL DEFAULT 'success',
-                error TEXT,
-                metadata TEXT
-            )
-        """)
-        
-        # Create indexes for common queries
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_traces_timestamp 
-            ON traces(timestamp DESC)
-        """)
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_traces_status 
-            ON traces(status)
-        """)
-        
-        conn.commit()
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS traces (
+                    id TEXT PRIMARY KEY,
+                    input TEXT NOT NULL,
+                    output TEXT NOT NULL,
+                    context TEXT,
+                    timestamp TEXT NOT NULL,
+                    duration_ms REAL,
+                    status TEXT NOT NULL DEFAULT 'success',
+                    error TEXT,
+                    metadata TEXT
+                )
+            """)
+            
+            # Create indexes for common queries
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_traces_timestamp 
+                ON traces(timestamp DESC)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_traces_status 
+                ON traces(status)
+            """)
+            
+            conn.commit()
+        except Exception as e:
+            _log_error(f"Failed to initialize database: {e}")
 
     def save(self, trace: Trace) -> None:
-        """Save a trace to the database."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
+        """
+        Save a trace to the database.
         
-        data = trace.to_dict()
-        
-        cursor.execute(
-            """
-            INSERT OR REPLACE INTO traces 
-            (id, input, output, context, timestamp, duration_ms, status, error, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                data["id"],
-                json.dumps(data["input"], ensure_ascii=False, default=str),
-                json.dumps(data["output"], ensure_ascii=False, default=str),
-                json.dumps(data["context"], ensure_ascii=False) if data["context"] else None,
-                data["timestamp"],
-                data["duration_ms"],
-                data["status"],
-                data["error"],
-                json.dumps(data["metadata"], ensure_ascii=False) if data["metadata"] else None,
-            ),
-        )
-        conn.commit()
+        This method is fail-safe: errors are logged but never raised,
+        ensuring that tracing never crashes the user's application.
+        """
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            data = trace.to_dict()
+            
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO traces 
+                (id, input, output, context, timestamp, duration_ms, status, error, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    data["id"],
+                    json.dumps(data["input"], ensure_ascii=False, default=str),
+                    json.dumps(data["output"], ensure_ascii=False, default=str),
+                    json.dumps(data["context"], ensure_ascii=False) if data["context"] else None,
+                    data["timestamp"],
+                    data["duration_ms"],
+                    data["status"],
+                    data["error"],
+                    json.dumps(data["metadata"], ensure_ascii=False) if data["metadata"] else None,
+                ),
+            )
+            conn.commit()
+        except Exception as e:
+            # Fail-safe: log the error but NEVER crash the user's app
+            _log_error(f"Failed to save trace {trace.id}: {e}")
 
     def load(self, trace_id: str) -> Optional[Trace]:
-        """Load a trace by ID."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM traces WHERE id = ?", (trace_id,))
-        row = cursor.fetchone()
-        
-        if row is None:
+        """Load a trace by ID. Returns None if not found or on error."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT * FROM traces WHERE id = ?", (trace_id,))
+            row = cursor.fetchone()
+            
+            if row is None:
+                return None
+            
+            return self._row_to_trace(row)
+        except Exception as e:
+            _log_error(f"Failed to load trace {trace_id}: {e}")
             return None
-        
-        return self._row_to_trace(row)
 
     def list_traces(
         self,
@@ -155,36 +180,44 @@ class SQLiteStorage(BaseStorage):
         offset: int = 0,
         status: Optional[str] = None,
     ) -> list[Trace]:
-        """List traces with optional filtering."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        
-        query = "SELECT * FROM traces"
-        params: list[Any] = []
-        
-        if status:
-            query += " WHERE status = ?"
-            params.append(status)
-        
-        query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
-        
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        
-        return [self._row_to_trace(row) for row in rows]
+        """List traces with optional filtering. Returns empty list on error."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            query = "SELECT * FROM traces"
+            params: list[Any] = []
+            
+            if status:
+                query += " WHERE status = ?"
+                params.append(status)
+            
+            query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+            
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            
+            return [self._row_to_trace(row) for row in rows]
+        except Exception as e:
+            _log_error(f"Failed to list traces: {e}")
+            return []
 
     def count(self, status: Optional[str] = None) -> int:
-        """Count total traces."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        
-        if status:
-            cursor.execute("SELECT COUNT(*) FROM traces WHERE status = ?", (status,))
-        else:
-            cursor.execute("SELECT COUNT(*) FROM traces")
-        
-        return cursor.fetchone()[0]
+        """Count total traces. Returns 0 on error."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            if status:
+                cursor.execute("SELECT COUNT(*) FROM traces WHERE status = ?", (status,))
+            else:
+                cursor.execute("SELECT COUNT(*) FROM traces")
+            
+            return cursor.fetchone()[0]
+        except Exception as e:
+            _log_error(f"Failed to count traces: {e}")
+            return 0
 
     def iter_traces(self) -> Iterator[Trace]:
         """Iterate over all traces."""
