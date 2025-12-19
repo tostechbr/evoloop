@@ -6,7 +6,7 @@ These dataclasses represent the fundamental structures used throughout the frame
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 
@@ -14,16 +14,16 @@ from uuid import uuid4
 class TraceContext:
     """
     Additional context captured alongside the trace.
-    
+
     This can include API responses, database queries, or any other
     data that was available during the agent execution.
-    
+
     Attributes:
         data: A dictionary containing any contextual data.
         source: Optional identifier for where this context came from.
     """
     data: dict[str, Any] = field(default_factory=dict)
-    source: Optional[str] = None
+    source: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -43,10 +43,10 @@ class TraceContext:
 class Trace:
     """
     Represents a single interaction trace from an agent.
-    
+
     A trace captures the input, output, and context of an agent execution,
     forming the foundation for evaluation and analysis.
-    
+
     Attributes:
         id: Unique identifier for this trace.
         input: The input provided to the agent (user message, query, etc.).
@@ -61,11 +61,11 @@ class Trace:
     input: Any
     output: Any
     id: str = field(default_factory=lambda: str(uuid4()))
-    context: Optional[TraceContext] = None
+    context: TraceContext | None = None
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    duration_ms: Optional[float] = None
+    duration_ms: float | None = None
     status: str = "success"  # "success" | "error"
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -101,25 +101,25 @@ class Trace:
     def _serialize(obj: Any) -> Any:
         """
         Serialize complex objects to JSON-compatible format.
-        
+
         Handles LangChain messages, Pydantic models, and other common types.
         """
         # Handle None
         if obj is None:
             return None
-        
+
         # Handle basic types
         if isinstance(obj, (str, int, float, bool)):
             return obj
-        
+
         # Handle lists
         if isinstance(obj, list):
             return [Trace._serialize(item) for item in obj]
-        
+
         # Handle dicts
         if isinstance(obj, dict):
             return {k: Trace._serialize(v) for k, v in obj.items()}
-        
+
         # Handle LangChain BaseMessage (duck typing to avoid import)
         if hasattr(obj, "content") and hasattr(obj, "type"):
             return {
@@ -127,12 +127,12 @@ class Trace:
                 "content": obj.content,
                 "additional_kwargs": getattr(obj, "additional_kwargs", {}),
             }
-        
+
         # Handle Pydantic models
         if hasattr(obj, "model_dump"):
             return obj.model_dump()
         if hasattr(obj, "dict"):
             return obj.dict()
-        
+
         # Fallback to string representation
         return str(obj)

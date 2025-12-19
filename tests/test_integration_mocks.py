@@ -1,6 +1,10 @@
+import os
+import tempfile
 import pytest
 from unittest.mock import MagicMock
 from evoloop import wrap, get_storage
+from evoloop.storage import SQLiteStorage
+from evoloop.tracker import set_storage
 from evoloop.types import Trace
 
 class MockLangGraphAgent:
@@ -12,7 +16,18 @@ class MockLangGraphAgent:
         yield {"messages": ["chunk1"]}
         yield {"messages": ["chunk2"]}
 
-def test_wrap_langgraph_invoke():
+@pytest.fixture
+def temp_storage():
+    """Create a temporary storage for testing."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    storage = SQLiteStorage(db_path=path)
+    set_storage(storage)
+    yield storage
+    storage.close()
+    os.unlink(path)
+
+def test_wrap_langgraph_invoke(temp_storage):
     """Test that wrap() correctly handles invoke() calls."""
     agent = MockLangGraphAgent()
     monitored_agent = wrap(agent, name="mock_agent")
@@ -31,7 +46,7 @@ def test_wrap_langgraph_invoke():
     assert traces[0].input == {"input": "test"}
     assert traces[0].output == {"messages": [{"content": "Mock response"}]}
 
-def test_wrap_langgraph_stream():
+def test_wrap_langgraph_stream(temp_storage):
     """Test that wrap() correctly handles stream() calls."""
     agent = MockLangGraphAgent()
     monitored_agent = wrap(agent, name="mock_agent_stream")

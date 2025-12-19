@@ -4,15 +4,15 @@ EvoLoop - Self-Evolving Agent Framework
 A framework-agnostic library for evaluating and improving AI agents.
 """
 
-from evoloop.types import Trace, TraceContext
 from evoloop.storage import SQLiteStorage
-from evoloop.tracker import monitor, wrap, log, get_storage
+from evoloop.tracker import get_storage, log, monitor, wrap
+from evoloop.types import Trace, TraceContext
 
 __version__ = "0.1.0"
 
 __all__ = [
     "monitor",
-    "wrap", 
+    "wrap",
     "log",
     "get_storage",
     "Trace",
